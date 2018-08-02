@@ -63,7 +63,7 @@ class Robot:
         self.movelist = []
         rmove = (False, None)
 
-    def find_path(self,x,y):
+    def find_path(self,x,y,px,py):
 
         '''
         Solve for the path between the robot and player. Once found,
@@ -94,34 +94,70 @@ class Robot:
         self.grid[x][y] = '+'
 
 
+        #### DIRECTION VECTOR ###########
+        # get direction vector to target
+        deltaX = px-x
+        deltaY = py-y
 
+        # initialize. Default to checking left, and down
+        search_dir = [ None, None, None, None]
+        left_right = ['l', 'r']
+        down_up = ['d', 'u']
 
-        ##### CHECK ADJACENT TILES 
-
-        ## if (find_path(North of x,y) == True) return True
-        if y-1 >= 0 and self.find_path(x,y-1) == True: return self.print_pos(x,y)
-
-        ## if (find_path(South of x,y) == True) return True
-        if y+1 <= self.max_y and self.find_path(x,y+1) == True: return self.print_pos(x,y)
-
-        ## if (find_path(East of x,y) == True) return True
-        if x+1 <= self.max_x and self.find_path(x+1,y) == True: return self.print_pos(x,y)
+        # if player is to right of robot, swap so 'right' gets searched first
+        # likewise, player above robot, prioritize 'up'
         
-        ## if (find_path(West of x,y) == True) return True
-        if x-1 >= 0 and self.find_path(x-1,y) == True: return self.print_pos(x,y)
+        if deltaX > 0:
+            left_right[0] = 'r'
+            left_right[1] = 'l'
+        if deltaY > 0:
+            down_up[0] = 'u'
+            down_up[1] = 'd'
 
-        ### Whelp, this tile's clean, but also a deadend
-        ## unmark x,y as part of solution path
+        # assemble list of directions to search: 
+        if abs(deltaX) > abs(deltaY):
+            search_dir[0] = left_right[0]
+            search_dir[1] = down_up[0]
+            search_dir[2] = left_right[1]
+            search_dir[3] = down_up[1]
+        else:
+            search_dir[0] = down_up[0]
+            search_dir[1] = left_right[0]
+            search_dir[2] = down_up[1]
+            search_dir[3] = left_right[1]
+
+
+        ### Choose next direction by search_dir ####
+        for direction in search_dir:
+
+            ##### CHECK ADJACENT TILES 
+            if direction == 'u':
+                ## if (find_path(North of x,y) == True) return True
+                if y-1 >= 0 and self.find_path(x,y-1,*p_xy) == True: return self.print_pos(x,y)
+            elif direction == 'd':
+                ## if (find_path(South of x,y) == True) return True
+                if y+1 <= self.max_y and self.find_path(x,y+1,*p_xy) == True: return self.print_pos(x,y)
+            elif direction == 'r':
+                ## if (find_path(East of x,y) == True) return True
+                if x+1 <= self.max_x and self.find_path(x+1,y,*p_xy) == True: return self.print_pos(x,y)
+            elif direction == 'l':    
+                ## if (find_path(West of x,y) == True) return True
+                if x-1 >= 0 and self.find_path(x-1,y,*p_xy) == True: return self.print_pos(x,y)
+
+                ### Whelp, this tile's clean, but also a deadend
+                ## unmark x,y as part of solution path
         self.grid[x][y] == 'x'
 
         ## return false
         return False
 
+   
+
     def print_pos(self,x,y):
         ## once findpath succeeds, each recursive step back to the robot is
         ## saved here in order, as movelist
 
-        #print(x, y)
+        # print(x, y)
         self.movelist.append((x,y))
         return True
 
@@ -131,7 +167,8 @@ def print_maze(grid):
             print(row)
 
 def valid_move(x,y): #takes a location tuple
-    if x > R.max_x or y > R.max_y or grid[x][y] in ['#','+','x']: #safe because out of bounds fails before xy evaluation 
+#safe because out of bounds fails before xy evaluation 
+    if x > R.max_x or x < 0 or y > R.max_y or y < 0 or grid[x][y] in ['#','+','x']: 
         return False, (x,y)
     if grid[x][y] == 'R':
         return True, ('robot')
@@ -146,7 +183,7 @@ def generate_grid():
             ['.','#','#','#','P']]
 
     grid1 =[['R','#','.','.','.','#','.'],
-            ['.','#','#','#','.','#','.'],
+            ['.','#','#','.','.','#','.'],
             ['.','.','.','.','.','.','.'],
             ['#','#','.','#','#','#','.'],
             ['.','#','.','#','.','.','.'],
@@ -155,7 +192,8 @@ def generate_grid():
 
     grid_list = [grid0, grid1]
 
-    grid_choice = random.randint(0,0)
+    # grid_choice = random.randint(0,1)
+    grid_choice = 1
     return grid_list[grid_choice]
 
 
@@ -173,7 +211,7 @@ grid = generate_grid()
 # .: open space
 
 R = Robot(grid)
-
+debug = False
 captured = False
 
 # starting positions: generalize this later to be callable maybe
@@ -207,12 +245,20 @@ while not captured:
 
 # do findpath from current spot, save next move
 
-    R.find_path(*r_xy)  # i think this means unpack tuple, holy shit did that work?
+    R.find_path(*r_xy, *p_xy)  # i think this means unpack tuple, holy shit did that work?
     
     if len(R.movelist)>1:
         rmove = (True, R.movelist[-2]) # robot next move (first step on path to player)
     else: 
         rmove = (True, R.movelist[0])
+    
+    ## debug ##
+    # os.system('clear')
+    if debug == True:
+        print('\n \n')
+        print_maze(R.grid)
+        print(R.movelist)
+        input()
 
 # get player input, check if valid: yes? move on. No? try again.
     
